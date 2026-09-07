@@ -106,6 +106,12 @@ const serverSchema = z.object({
   SAFEPAY_API_KEY: optionalSecret(),
   SAFEPAY_SECRET_KEY: optionalSecret(),
   SAFEPAY_WEBHOOK_SECRET: optionalSecret(),
+  PADDLE_ENVIRONMENT: optionalWithDefault("sandbox").pipe(
+    z.enum(["sandbox", "production"]),
+  ),
+  PADDLE_API_KEY: optionalSecret(),
+  PADDLE_WEBHOOK_SECRET: optionalSecret(),
+  PADDLE_CLIENT_TOKEN: optionalSecret(),
   ANTHROPIC_API_KEY: optionalSecret(),
   AI_MODEL: optionalWithDefault("claude-sonnet-5"),
   EMAIL_API_KEY: optionalSecret(),
