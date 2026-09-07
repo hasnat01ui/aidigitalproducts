@@ -48,20 +48,15 @@ Registrar: Cloudflare (at-cost pricing, free DNS) or Namecheap. **Do not buy the
 
 ---
 
-## 3. Push to GitHub
+## 3. GitHub — DONE
 
-The repo has a git history from scaffolding but nothing has been committed by me. Before your first push:
+Pushed to **https://github.com/hasnat01ui/AI-Digital-Products** on branch `main`.
 
-```bash
-cd "c:/Users/PC/Desktop/AI Digital Products"
-git status                       # confirm .env.local is NOT listed
-git add -A
-git commit -m "AUREVIA: research, schema, site foundation, SEO"
-```
+The remote already contained a starter `README.md`. It was **merged**, not force-pushed, so the original commit history is preserved.
 
-**Verify `.env.local` is absent from `git status` before pushing.** It contains your service-role key. It is git-ignored and this has been verified, but check anyway — a leaked service-role key gives full database access, bypassing every RLS policy.
+Before the push, staged content was scanned for secrets: only `.env.example` (placeholders, no values) is tracked. `.env.local` is git-ignored and was verified absent.
 
-If it ever does leak: rotate it immediately in Supabase → Settings → API.
+> If the service-role key is ever exposed, rotate it immediately at Supabase → Settings → API. It bypasses every RLS policy.
 
 ---
 
@@ -79,7 +74,7 @@ If it ever does leak: rotate it immediately in Supabase → Settings → API.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your publishable key | All |
 | `SUPABASE_SERVICE_ROLE_KEY` | your service-role key | All — **mark as Sensitive** |
 
-> Leave the Safepay and email variables unset for now. `src/lib/env.ts` treats blank as absent, so the site runs fine without them and payment code fails loudly rather than silently if invoked.
+> **These four are the complete minimum — verified by a clean production build with nothing else set.** Leave the Safepay, AI and email variables unset for now: `src/lib/env.ts` treats blank as absent, so the site runs fine without them, and payment code fails loudly rather than silently if invoked.
 
 5. Deploy.
 6. **Domains** → add your domain → follow the DNS instructions.
