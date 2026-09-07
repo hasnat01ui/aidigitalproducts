@@ -1,8 +1,8 @@
 # AUREVIA — Project Status
 
 **Tagline:** Intelligence. Packaged for Growth.
-**Last updated:** 2026-09-07
-**Phase:** Research complete. Foundation built. Ready for validation Stages 1–3.
+**Last updated:** 2026-09-08
+**Phase:** Foundation + lead magnet shipped. Deployed to Vercel. Ready for validation Stages 1–3.
 
 ---
 
@@ -42,7 +42,13 @@
 | Legal pages | `/privacy`, `/terms`, `/refund-policy`, `/contact` — previously 404s linked from the footer |
 | Marketing docs | `marketing/seo-strategy.md`, `marketing/blog-topics.md` (30 topics) |
 | Deployment guide | `docs/deployment.md` |
-| Build + lint + typecheck | ✅ All passing (11 routes) |
+| **Time-Recovery Audit** | Interactive tool at `/audit` — live calculation, no signup gate, conservative per-task recovery rates |
+| **Email service** | Provider-agnostic (Resend); degrades to a logged no-op when unconfigured and reports `emailed:false` honestly |
+| **Audit storage** | `audit_responses` table; results recalculated server-side, never trusted from the client |
+| Shared rate limiter | `src/lib/rate-limit.ts`, memory-bounded |
+| GitHub | Pushed to `hasnat01ui/AI-Digital-Products` |
+| Vercel | Linked; build failure fixed (lazy env validation) |
+| Build + lint + typecheck | ✅ All passing (13 routes) |
 | Functional DB tests | ✅ Email normalisation, case-insensitive upsert, and order-total tamper rejection all verified; test data removed |
 
 ### Migrations applied
@@ -50,21 +56,22 @@
 1. `20260907120000_aurevia_core_schema` — core commerce schema
 2. `20260907130000_harden_functions_and_policies` — advisor remediation
 3. `20260907140000_leads_email_normalisation` — upsert conflict target fix
+4. `20260908100000_audit_responses` — Time-Recovery Audit results
 
 ## In progress
 
 - Nothing. Awaiting the next work block.
 
-## Not deployed yet — and deliberately so
+## Before promoting the URL
 
-The codebase is deployment-ready, but going public should wait for two things:
+One item remains: **set `EMAIL_API_KEY`** (Resend, ~10 minutes). Until then the audit
+still works and still shows the visitor their number immediately — email is optional
+and the UI says plainly that a copy will follow once delivery is switched on. Nothing
+on the site claims something untrue, but a lead who receives nothing will not open the
+next email either.
 
-1. **Transactional email is not connected** — the form captures addresses but nothing sends.
-2. **The lead magnet does not exist** — there is nothing to send even once email works.
-
-The form copy is honest about this, so nothing on the site is untrue. But announcing it before the audit exists would burn the first wave of traffic. A private staging deploy is safe now (preview deploys are auto-blocked from indexing).
-
-Deployment, domain purchase, and Google Search Console verification all require the founder's own accounts — see `docs/deployment.md`.
+Also still outstanding: a custom domain, and Google Search Console verification. Both
+require the founder's own accounts — see `docs/deployment.md`.
 
 ## Blocked
 
@@ -78,12 +85,13 @@ Deployment, domain purchase, and Google Search Console verification all require 
 
 **Immediate (unblocked, in priority order):**
 
-1. Build the free Time-Recovery Audit — the lead magnet and the instrument that tests assumption A1
-2. Auth flows: register, login, email verification, password reset, protected routes
-3. Legal pages: privacy, terms, refund policy, contact
-4. Security headers / CSP in `next.config.ts`
-5. Private storage bucket + signed-URL download route
-6. Remaining docs: pricing, AI unit economics, email funnel, SEO, content calendar
+1. Set `EMAIL_API_KEY` so audit results actually deliver
+2. Buy a domain; point `NEXT_PUBLIC_APP_URL` at it; verify in Google Search Console
+3. Auth flows: register, login, email verification, password reset, protected routes
+4. Email funnel (9 emails) — `docs/email-funnel.md`
+5. Cluster 1 blog articles (#1, #2, #12 from `marketing/blog-topics.md`)
+6. Private storage bucket + signed-URL download route
+7. Remaining docs: pricing, AI unit economics
 
 **Founder-led, start now in parallel:**
 
@@ -110,6 +118,9 @@ Deployment, domain purchase, and Google Search Console verification all require 
 | D10 | Turbopack pinned in `dev` and `build` scripts | `next/font` emits Turbopack-internal imports in Next 16; webpack build fails | 2026-09-07 |
 | D11 | `leads.email` normalised by trigger + plain unique constraint | PostgREST cannot infer a functional index as an ON CONFLICT target; moving the invariant into the DB avoids a racy select-then-insert | 2026-09-07 |
 | D12 | `is_admin` remains executable by `authenticated` | Required for RLS evaluation; takes no arguments and leaks nothing. Documented in `docs/security.md` §3 | 2026-09-07 |
+| D13 | Env validated lazily, not at module load | `next build` imports every route while collecting page data, so eager validation turned a missing var into an opaque Vercel build failure. Builds now compile without secrets and fail at the first request that needs one | 2026-09-08 |
+| D14 | Audit result is **not** gated behind an email form | The page promises a number "with or without us". Gating it would contradict that and depress completions — the metric that actually tests assumption A1 | 2026-09-08 |
+| D15 | Recovery rates are per-task and conservative (25–70%) | A number the buyer does not believe is worth less than a smaller one they do. Assumptions are rendered on the page | 2026-09-08 |
 
 ## Risks
 

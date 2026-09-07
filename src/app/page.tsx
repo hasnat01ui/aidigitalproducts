@@ -96,11 +96,11 @@ export default function HomePage() {
             AUREVIA
           </span>
           <a
-            href="#audit"
+            href="/audit"
             className="rounded-[--radius-base] px-4 py-2 text-sm font-medium"
             style={{ background: "var(--accent-strong)", color: "#0b0d10" }}
           >
-            Get the free audit
+            Take the free audit
           </a>
         </nav>
       </header>
@@ -131,8 +131,17 @@ export default function HomePage() {
           pay for.
         </p>
 
-        <div className="mt-10" id="audit">
-          <LeadForm source="hero" />
+        <div className="mt-10 flex flex-wrap items-center gap-4" id="audit">
+          <a
+            href="/audit"
+            className="rounded-[--radius-base] px-6 py-3 text-base font-medium"
+            style={{ background: "var(--accent-strong)", color: "#0b0d10" }}
+          >
+            Take the free audit
+          </a>
+          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+            No signup. Your number appears as you type.
+          </span>
         </div>
       </section>
 
@@ -277,11 +286,28 @@ export default function HomePage() {
           Find out what non-billable work is actually costing you.
         </h2>
         <p className="mt-4 max-w-2xl text-lg" style={{ color: "var(--text-muted)" }}>
-          The Time-Recovery Audit takes about fifteen minutes and gives you a
+          The Time-Recovery Audit takes about five minutes and gives you a
           number you can act on — with or without us.
         </p>
-        <div className="mt-8">
-          <LeadForm source="footer-cta" />
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <a
+            href="/audit"
+            className="rounded-[--radius-base] px-6 py-3 text-base font-medium"
+            style={{ background: "var(--accent-strong)", color: "#0b0d10" }}
+          >
+            Take the free audit
+          </a>
+          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Free, and you keep the result either way.
+          </span>
+        </div>
+
+        <div className="mt-16 max-w-md border-t pt-10">
+          <p className="text-sm font-medium">Rather just follow along?</p>
+          <p className="mt-1 mb-4 text-sm" style={{ color: "var(--text-muted)" }}>
+            We email when something worth reading ships. A couple of times a month.
+          </p>
+          <LeadForm source="footer-newsletter" />
         </div>
       </section>
 
