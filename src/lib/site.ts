@@ -9,15 +9,51 @@
  * localhost or a preview URL tell Google the real domain is a duplicate.
  */
 
+const FALLBACK_URL = "http://localhost:3000";
+
+/**
+ * Normalise a configured URL so it can never crash the build.
+ *
+ * `new URL("aurevia.com")` throws — a bare host is not a valid URL. That is
+ * exactly how a domain gets typed into a hosting dashboard, and because
+ * `layout.tsx` builds a `metadataBase` at module load, the throw surfaced as
+ * an opaque "project or build error" rather than anything actionable.
+ *
+ * A misconfigured URL should degrade, not detonate: add the missing scheme,
+ * strip a trailing slash, and fall back to localhost if it is still unusable.
+ */
+function normaliseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+
+  const withScheme = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    console.warn(
+      `[site] NEXT_PUBLIC_APP_URL is not a usable URL: ${JSON.stringify(value)}. ` +
+        `Falling back to ${FALLBACK_URL}. Set it to a full origin, e.g. https://aurevia.com`,
+    );
+    return null;
+  }
+}
+
 function resolveSiteUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
+  const explicit = normaliseUrl(process.env.NEXT_PUBLIC_APP_URL);
+  if (explicit) return explicit;
 
-  // Vercel sets this automatically on preview deployments.
-  const vercel = process.env.NEXT_PUBLIC_VERCEL_URL;
-  if (vercel) return `https://${vercel}`;
+  // Vercel sets these automatically. VERCEL_URL is the per-deployment host.
+  const vercel =
+    normaliseUrl(process.env.NEXT_PUBLIC_VERCEL_URL) ??
+    normaliseUrl(process.env.VERCEL_URL);
+  if (vercel) return vercel;
 
-  return "http://localhost:3000";
+  return FALLBACK_URL;
 }
 
 export const siteUrl = resolveSiteUrl();

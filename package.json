@@ -28,5 +28,8 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "AUREVIA — Intelligence. Packaged for Growth."
+  "description": "AUREVIA — Intelligence. Packaged for Growth.",
+  "engines": {
+    "node": ">=20.9.0"
+  }
 }

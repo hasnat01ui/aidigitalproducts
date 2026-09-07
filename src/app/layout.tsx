@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 
+import { site, siteUrl } from "@/lib/site";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -16,10 +18,10 @@ const fraunces = Fraunces({
   axes: ["SOFT", "WONK", "opsz"],
 });
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(appUrl),
+  // siteUrl is normalised in @/lib/site and is always a valid origin, so this
+  // cannot throw at module load and take the whole build down with it.
+  metadataBase: new URL(siteUrl),
   title: {
     default: "AUREVIA — Intelligence. Packaged for Growth.",
     template: "%s — AUREVIA",
@@ -28,11 +30,11 @@ export const metadata: Metadata = {
     "AUREVIA builds the operating method for AI in small agencies — the workflows, standards and review gates that turn the tools you already pay for into consistent client work.",
   openGraph: {
     type: "website",
-    siteName: "AUREVIA",
+    siteName: site.name,
     title: "AUREVIA — Intelligence. Packaged for Growth.",
     description:
       "The operating method for AI in small agencies. Deliver more client work, at a consistent standard, without hiring.",
-    url: appUrl,
+    url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
