@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-import { clientEnv, serverEnv } from "@/lib/env";
+import { requireClientEnv, serverEnv } from "@/lib/env";
 
 /**
  * Request-scoped Supabase client for Server Components, Server Actions and
@@ -12,11 +12,12 @@ import { clientEnv, serverEnv } from "@/lib/env";
  * default — reach for it unless you specifically need to bypass RLS.
  */
 export async function createSupabaseServerClient() {
+  const env = requireClientEnv();
   const cookieStore = await cookies();
 
   return createServerClient(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-    clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -55,7 +56,7 @@ export async function createSupabaseServerClient() {
  */
 export function createSupabaseAdminClient() {
   return createClient(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
+    requireClientEnv().NEXT_PUBLIC_SUPABASE_URL,
     serverEnv().SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: { autoRefreshToken: false, persistSession: false },

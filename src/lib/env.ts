@@ -3,12 +3,37 @@ import { z } from "zod";
 /**
  * Environment validation.
  *
- * Split deliberately into two schemas. `clientEnv` is safe to evaluate
- * anywhere. `serverEnv()` is a function rather than a module-level constant so
- * that merely importing this file from a client component cannot pull server
- * secrets into the browser bundle — the secrets are only read when the
- * function is actually called, which only ever happens on the server.
+ * Design rule: **validation is lazy, never at module load.**
+ *
+ * An earlier version parsed and threw at import time. Next.js imports every
+ * route module while collecting page data during `next build`, so a missing
+ * variable killed the *build* rather than the request — and on Vercel that
+ * surfaces only as "The deployment failed because of a project or build
+ * error", with the real cause buried in the log.
+ *
+ * A build should not require runtime secrets. It should compile, deploy, and
+ * then fail loudly and specifically on the first request that actually needs a
+ * missing value. That is what this module now does.
+ *
+ * The client/server split is preserved: server secrets are read inside a
+ * function, so importing this file from a client component cannot pull them
+ * into the browser bundle.
  */
+
+/* -------------------------------------------------------------------------- */
+/*  Public (browser-safe) variables                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read as static member accesses so Next.js can inline the values at build
+ * time. `process.env[key]` would not be replaced and would be undefined in the
+ * browser.
+ */
+const rawClientEnv = {
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "",
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+} as const;
 
 const clientSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
@@ -16,39 +41,60 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
 });
 
-// Referenced explicitly rather than via process.env[key] because Next.js
-// inlines NEXT_PUBLIC_* values at build time only for static member accesses.
-const clientResult = clientSchema.safeParse({
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-});
+export type ClientEnv = z.infer<typeof clientSchema>;
 
-if (!clientResult.success) {
-  throw new Error(
-    `Invalid public environment variables:\n${clientResult.error.issues
-      .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
-      .join("\n")}\n\nCopy .env.example to .env.local and fill it in.`,
-  );
+/** Raw values. May be empty during build. Prefer `requireClientEnv()`. */
+export const clientEnv = rawClientEnv;
+
+let cachedClientEnv: ClientEnv | null = null;
+
+/**
+ * Validated public config. Call at the point of use — never at module scope.
+ * Throws a message naming exactly which variables are missing.
+ */
+export function requireClientEnv(): ClientEnv {
+  if (cachedClientEnv) return cachedClientEnv;
+
+  const parsed = clientSchema.safeParse(rawClientEnv);
+  if (!parsed.success) {
+    throw new Error(
+      `Missing or invalid public environment variables:\n${parsed.error.issues
+        .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+        .join("\n")}\n\n` +
+        `Locally: copy .env.example to .env.local and fill it in.\n` +
+        `On Vercel: Project Settings > Environment Variables, then redeploy.`,
+    );
+  }
+
+  cachedClientEnv = parsed.data;
+  return cachedClientEnv;
 }
 
-export const clientEnv = clientResult.data;
+/** Non-throwing check, for rendering a helpful message instead of crashing. */
+export function isSupabaseConfigured(): boolean {
+  return clientSchema.safeParse(rawClientEnv).success;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Server-only variables                                                      */
+/* -------------------------------------------------------------------------- */
 
 /**
  * An unset variable in a .env file is an EMPTY STRING, not undefined. Without
- * this, `SAFEPAY_API_KEY=` in .env.local counts as "present but invalid" and
- * fails `.min(1).optional()`, breaking every server route before a merchant
- * account exists. Treat blank as absent.
+ * this, `SAFEPAY_API_KEY=` counts as "present but invalid" and fails
+ * `.min(1).optional()`. Treat blank as absent.
  */
 const optionalSecret = () =>
   z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
     z.string().min(1).optional(),
   );
 
 const optionalWithDefault = (fallback: string) =>
   z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
     z.string().default(fallback),
   );
 
@@ -63,7 +109,7 @@ const serverSchema = z.object({
   ANTHROPIC_API_KEY: optionalSecret(),
   AI_MODEL: optionalWithDefault("claude-sonnet-5"),
   EMAIL_API_KEY: optionalSecret(),
-  EMAIL_FROM: optionalWithDefault("AUREVIA <hello@aurevia.example>"),
+  EMAIL_FROM: optionalWithDefault("AUREVIA <hello@aurevia.com>"),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
@@ -80,9 +126,11 @@ export function serverEnv(): ServerEnv {
   const parsed = serverSchema.safeParse(process.env);
   if (!parsed.success) {
     throw new Error(
-      `Invalid server environment variables:\n${parsed.error.issues
+      `Missing or invalid server environment variables:\n${parsed.error.issues
         .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
-        .join("\n")}`,
+        .join("\n")}\n\n` +
+        `On Vercel: Project Settings > Environment Variables. ` +
+        `Mark SUPABASE_SERVICE_ROLE_KEY as Sensitive.`,
     );
   }
 
@@ -90,11 +138,15 @@ export function serverEnv(): ServerEnv {
   return cachedServerEnv;
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Feature gates                                                              */
+/* -------------------------------------------------------------------------- */
+
 /**
- * Safepay credentials are optional above so the site can be developed, and the
- * lead magnet and email capture can run, before a merchant account exists.
- * Any code path that actually takes money must call this first, so the failure
- * is a loud, early, explicit one rather than a half-completed checkout.
+ * Safepay credentials are optional so the site can run — and leads can be
+ * captured — before a merchant account exists. Any code path that takes money
+ * calls this first, so failure is loud and early rather than a half-finished
+ * checkout.
  */
 export function requireSafepayConfig() {
   const env = serverEnv();
@@ -121,6 +173,14 @@ export function isPaymentsEnabled(): boolean {
   try {
     requireSafepayConfig();
     return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isEmailEnabled(): boolean {
+  try {
+    return Boolean(serverEnv().EMAIL_API_KEY);
   } catch {
     return false;
   }

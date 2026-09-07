@@ -2,7 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
-import { clientEnv } from "@/lib/env";
+import { requireClientEnv } from "@/lib/env";
 
 /**
  * Browser Supabase client. Uses the anon key and is fully subject to RLS.
@@ -10,8 +10,9 @@ import { clientEnv } from "@/lib/env";
  * anything that determines entitlement or money.
  */
 export function createSupabaseBrowserClient() {
+  const env = requireClientEnv();
   return createBrowserClient(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-    clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 }
